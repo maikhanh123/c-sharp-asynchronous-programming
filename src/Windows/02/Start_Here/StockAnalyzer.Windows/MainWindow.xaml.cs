@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Navigation;
 
@@ -18,8 +19,6 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
     }
-
-
 
     private void Search_Click(object sender, RoutedEventArgs e)
     {
@@ -39,13 +38,6 @@ public partial class MainWindow : Window
         AfterLoadingStockData();
     }
 
-
-
-
-
-
-
-
     private void BeforeLoadingStockData()
     {
         stopwatch.Restart();
@@ -57,6 +49,19 @@ public partial class MainWindow : Window
     {
         StocksStatus.Text = $"Loaded stocks for {StockIdentifier.Text} in {stopwatch.ElapsedMilliseconds}ms";
         StockProgress.Visibility = Visibility.Hidden;
+    }
+
+    private async Task GetStocks()
+    {
+        try
+        {
+            
+        }
+        catch (System.Exception ex)
+        {
+
+            throw;
+        }
     }
 
     private void Hyperlink_OnRequestNavigate(object sender, RequestNavigateEventArgs e)

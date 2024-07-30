@@ -19,9 +19,7 @@ public class StockService : IStockService
     private static string API_URL = "https://ps-async.fekberg.com/api/stocks";
     private int i = 0;
 
-    public async Task<IEnumerable<StockPrice>>
-        GetStockPricesFor(string stockIdentifier,
-                          CancellationToken cancellationToken)
+    public async Task<IEnumerable<StockPrice>>GetStockPricesFor(string stockIdentifier, CancellationToken cancellationToken)
     {
         // Simulate that each time this method is called
         // it takes a little bit longer.
