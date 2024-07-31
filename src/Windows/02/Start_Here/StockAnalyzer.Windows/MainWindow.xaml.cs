@@ -1,8 +1,11 @@
 ﻿using Newtonsoft.Json;
 using StockAnalyzer.Core.Domain;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -20,20 +23,21 @@ public partial class MainWindow : Window
         InitializeComponent();
     }
 
-    private void Search_Click(object sender, RoutedEventArgs e)
+    private async void Search_Click(object sender, RoutedEventArgs e)
     {
         BeforeLoadingStockData();
 
-        var client = new WebClient();
+        var data = await GetStocksByHttpClient(StockIdentifier.Text);
 
-        var content = client.DownloadString($"{API_URL}/{StockIdentifier.Text}");
+        if (!String.IsNullOrEmpty(data.ErrorMessage))
+        {
+            Notes.Text = data.ErrorMessage;
+        }
+        else
+        {
+            Stocks.ItemsSource = data.StocksList;
+        }
 
-        // Simulate that the web call takes a very long time
-        Thread.Sleep(10000);
-
-        var data = JsonConvert.DeserializeObject<IEnumerable<StockPrice>>(content);
-
-        Stocks.ItemsSource = data;
 
         AfterLoadingStockData();
     }
@@ -43,6 +47,9 @@ public partial class MainWindow : Window
         stopwatch.Restart();
         StockProgress.Visibility = Visibility.Visible;
         StockProgress.IsIndeterminate = true;
+
+        Stocks.ItemsSource = null;
+        Notes.Text = String.Empty;
     }
 
     private void AfterLoadingStockData()
@@ -51,17 +58,64 @@ public partial class MainWindow : Window
         StockProgress.Visibility = Visibility.Hidden;
     }
 
-    private async Task GetStocks()
+    private IEnumerable<StockPrice> GetStocksBywebClient()
     {
+        var client = new WebClient();
+
+        var content = client.DownloadString($"{API_URL}/{StockIdentifier.Text}");
+
+        // Simulate that the web call takes a very long time
+        Thread.Sleep(10000);
+
+        var data = JsonConvert.DeserializeObject<IEnumerable<StockPrice>>(content);
+        return data;
+    }
+
+    private async Task<Result> GetStocksByHttpClient(string text)
+    {
+        // Simulate that the web call takes a very long time
+        //await Task.Delay(5000);
+
+        Result result = new Result();
+
         try
         {
-            
-        }
-        catch (System.Exception ex)
-        {
+            using (var client = new HttpClient())
+            {
+                var response = await client.GetAsync($"{API_URL}/{text}");
 
-            throw;
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    if (String.IsNullOrEmpty(content))
+                    {
+                        throw new Exception("Deserialization resulted in null data.");
+                    }
+                    var data = JsonConvert.DeserializeObject<IEnumerable<StockPrice>>(content);
+                    if (data == null)
+                    {
+                        result.StocksList = new List<StockPrice>();
+                        result.ErrorMessage = "Deserialization resulted in null data.";
+                    }
+                    else
+                    {
+                        result.StocksList = data;
+                    }
+                }
+                else
+                {
+                    result.StocksList = new List<StockPrice>();
+                    result.ErrorMessage = "Deserialization resulted in null data.";
+                }
+            }
         }
+        catch (Exception ex)
+        {
+            result.StocksList = new List<StockPrice>();
+            result.ErrorMessage = $"An error occurred while fetching stock prices. {ex}";
+        }
+
+        return result;
     }
 
     private void Hyperlink_OnRequestNavigate(object sender, RequestNavigateEventArgs e)
@@ -74,5 +128,11 @@ public partial class MainWindow : Window
     private void Close_OnClick(object sender, RoutedEventArgs e)
     {
         Application.Current.Shutdown();
+    }
+
+    class Result
+    {
+        public IEnumerable<StockPrice>? StocksList { get; set; }
+        public string? ErrorMessage { get; set; }
     }
 }
