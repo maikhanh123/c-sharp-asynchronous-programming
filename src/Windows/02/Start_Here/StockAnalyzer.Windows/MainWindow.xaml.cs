@@ -4,6 +4,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -27,16 +29,33 @@ public partial class MainWindow : Window
     {
         BeforeLoadingStockData();
 
-        var data = await GetStocksByHttpClient(StockIdentifier.Text);
+        //var data = await GetStocksByHttpClient(StockIdentifier.Text);
 
-        if (!String.IsNullOrEmpty(data.ErrorMessage))
+        //if (!String.IsNullOrEmpty(data.ErrorMessage))
+        //{
+        //    Notes.Text = data.ErrorMessage;
+        //}
+        //else
+        //{
+        //    Stocks.ItemsSource = data.StocksList;
+        //}
+
+        await Task.Run(() =>
         {
-            Notes.Text = data.ErrorMessage;
-        }
-        else
-        {
-            Stocks.ItemsSource = data.StocksList;
-        }
+            var lines = File.ReadAllLines("StockPrices_Small.csv");
+            var data = new List<StockPrice>();
+            foreach (var line in lines.Skip(1))
+            {
+                var price = StockPrice.FromCSV(line);
+                data.Add(price);
+            }
+
+            Dispatcher.Invoke(() =>
+            {
+                Stocks.ItemsSource = data.Where(sp => sp.Identifier == StockIdentifier.Text);
+            });
+            
+        });
 
 
         AfterLoadingStockData();
