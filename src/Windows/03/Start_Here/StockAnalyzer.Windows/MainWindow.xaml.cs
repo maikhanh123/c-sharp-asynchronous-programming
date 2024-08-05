@@ -4,6 +4,8 @@ using StockAnalyzer.Core.Domain;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -31,7 +33,9 @@ public partial class MainWindow : Window
         {
             BeforeLoadingStockData();
 
-            await GetStocks();
+            GetStocksTask();
+
+            //await GetStocks();
         }
         catch (Exception ex)
         {
@@ -52,6 +56,45 @@ public partial class MainWindow : Window
             var responseTask = store.GetStockPrices(StockIdentifier.Text);
 
             Stocks.ItemsSource = await responseTask;
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+
+    private void GetStocksTask()
+    {
+        try
+        {
+            var loadLinesTask = Task.Run(async () => {
+                using var stream = new StreamReader(File.OpenRead("StockPrices_Small.csv"));
+
+                await Task.Delay(8000);
+
+                var lines = new List<string>();
+                while (await stream.ReadLineAsync() is string line)
+                {
+                    lines.Add(line);
+                }
+                return lines;
+            });
+
+            var processStocksTask = loadLinesTask.ContinueWith((completedTask) =>
+            {
+                var lines = completedTask.Result;
+                var data = new List<StockPrice>();
+                foreach (var line in lines.Skip(1))
+                {
+                    var price = StockPrice.FromCSV(line);
+                    data.Add(price);
+                }
+
+                Dispatcher.Invoke(() =>
+                {
+                    Stocks.ItemsSource = data.Where(sp => sp.Identifier == StockIdentifier.Text);
+                });
+            });
         }
         catch (Exception ex)
         {
