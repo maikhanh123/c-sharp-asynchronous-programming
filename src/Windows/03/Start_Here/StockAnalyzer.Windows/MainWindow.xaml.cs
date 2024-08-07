@@ -27,7 +27,7 @@ public partial class MainWindow : Window
 
 
 
-    private async void Search_Click(object sender, RoutedEventArgs e)
+    private void Search_Click(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -43,7 +43,7 @@ public partial class MainWindow : Window
         }
         finally
         {
-            AfterLoadingStockData();
+            //AfterLoadingStockData();
         }
     }
 
@@ -95,23 +95,21 @@ public partial class MainWindow : Window
                     Stocks.ItemsSource = data.Where(sp => sp.Identifier == StockIdentifier.Text);
                 });
             });
+
+            processStocksTask.ContinueWith((_) =>
+            {
+
+                Dispatcher.Invoke(() =>
+                {
+                    AfterLoadingStockData();
+                });
+            });
         }
         catch (Exception ex)
         {
             throw;
         }
     }
-
-
-
-
-
-
-
-
-
-
-
 
     private void BeforeLoadingStockData()
     {
