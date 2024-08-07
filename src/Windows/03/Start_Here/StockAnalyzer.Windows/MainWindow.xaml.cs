@@ -68,9 +68,9 @@ public partial class MainWindow : Window
         try
         {
             var loadLinesTask = Task.Run(async () => {
-                using var stream = new StreamReader(File.OpenRead("StockPrices_Small.csv"));
+                using var stream = new StreamReader(File.OpenRead("ssStockPrices_Small.csv"));
 
-                await Task.Delay(8000);
+                await Task.Delay(3000);
 
                 var lines = new List<string>();
                 while (await stream.ReadLineAsync() is string line)
@@ -79,6 +79,14 @@ public partial class MainWindow : Window
                 }
                 return lines;
             });
+
+            loadLinesTask.ContinueWith((t) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    Notes.Text = t.Exception?.InnerException?.Message;
+                });
+            }, TaskContinuationOptions.OnlyOnFaulted);
 
             var processStocksTask = loadLinesTask.ContinueWith((completedTask) =>
             {
@@ -94,7 +102,7 @@ public partial class MainWindow : Window
                 {
                     Stocks.ItemsSource = data.Where(sp => sp.Identifier == StockIdentifier.Text);
                 });
-            });
+            }, TaskContinuationOptions.OnlyOnRanToCompletion);
 
             processStocksTask.ContinueWith((_) =>
             {
