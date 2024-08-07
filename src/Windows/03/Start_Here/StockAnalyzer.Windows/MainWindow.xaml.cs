@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using StockAnalyzer.Core;
 using StockAnalyzer.Core.Domain;
+using StockAnalyzer.Core.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -27,7 +28,7 @@ public partial class MainWindow : Window
         InitializeComponent();
     }
 
-    private void Search_Click(object sender, RoutedEventArgs e)
+    private async void Search_Click(object sender, RoutedEventArgs e)
     {
 
         if (cancellationTokenSource is not null)
@@ -64,63 +65,72 @@ public partial class MainWindow : Window
 
             BeforeLoadingStockData();
 
-            var loadLinesTask = Task.Run(async () => {
-                using var stream = new StreamReader(File.OpenRead("StockPrices_Small.csv"));
+            // Test 3: Using HttpClient async await with cancel token
+            var service = new StockService();
+            var data = await service.GetStockPricesFor(StockIdentifier.Text, cancellationTokenSource.Token);
+            Stocks.ItemsSource = data;
 
-                //await Task.Delay(3000);
 
-                var lines = new List<string>();
-                while (await stream.ReadLineAsync() is string line)
-                {
-                    if (cancellationTokenSource is not null && cancellationTokenSource.Token.IsCancellationRequested)
-                    {
-                        break;
-                    }
-                    lines.Add(line);
-                }
-                return lines;
-            }, cancellationTokenSource.Token);
+            // Test 2: using cancellation with Parallels task
+            //var loadLinesTask = Task.Run(async () => {
+            //    using var stream = new StreamReader(File.OpenRead("StockPrices_Small.csv"));
 
-            loadLinesTask.ContinueWith((t) =>
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    Notes.Text = t.Exception?.InnerException?.Message;
-                });
-            }, TaskContinuationOptions.OnlyOnFaulted);
+            //    //await Task.Delay(3000);
 
-            var processStocksTask = loadLinesTask.ContinueWith((completedTask) =>
-            {
-                var lines = completedTask.Result;
-                var data = new List<StockPrice>();
-                foreach (var line in lines.Skip(1))
-                {
-                    var price = StockPrice.FromCSV(line);
-                    data.Add(price);
-                }
+            //    var lines = new List<string>();
+            //    while (await stream.ReadLineAsync() is string line)
+            //    {
+            //        if (cancellationTokenSource is not null && cancellationTokenSource.Token.IsCancellationRequested)
+            //        {
+            //            break;
+            //        }
+            //        lines.Add(line);
+            //    }
+            //    return lines;
+            //}, cancellationTokenSource.Token);
 
-                Dispatcher.Invoke(() =>
-                {
-                    Stocks.ItemsSource = data.Where(sp => sp.Identifier == StockIdentifier.Text);
-                });
-            }, TaskContinuationOptions.OnlyOnRanToCompletion);
+            //loadLinesTask.ContinueWith((t) =>
+            //{
+            //    Dispatcher.Invoke(() =>
+            //    {
+            //        Notes.Text = t.Exception?.InnerException?.Message;
+            //    });
+            //}, TaskContinuationOptions.OnlyOnFaulted);
 
-            processStocksTask.ContinueWith((_) =>
-            {
+            //var processStocksTask = loadLinesTask.ContinueWith((completedTask) =>
+            //{
+            //    var lines = completedTask.Result;
+            //    var data = new List<StockPrice>();
+            //    foreach (var line in lines.Skip(1))
+            //    {
+            //        var price = StockPrice.FromCSV(line);
+            //        data.Add(price);
+            //    }
 
-                Dispatcher.Invoke(() =>
-                {
-                    AfterLoadingStockData();
+            //    Dispatcher.Invoke(() =>
+            //    {
+            //        Stocks.ItemsSource = data.Where(sp => sp.Identifier == StockIdentifier.Text);
+            //    });
+            //}, TaskContinuationOptions.OnlyOnRanToCompletion);
 
-                    cancellationTokenSource?.Dispose();
-                    cancellationTokenSource = null;
+            //processStocksTask.ContinueWith((_) =>
+            //{
 
-                    Search.Content = "Search";
-                });
-            });
+            //    Dispatcher.Invoke(() =>
+            //    {
+            //        AfterLoadingStockData();
 
+            //        cancellationTokenSource?.Dispose();
+            //        cancellationTokenSource = null;
+
+            //        Search.Content = "Search";
+            //    });
+            //});
+
+            // Error: using parrallel task reference canncel token in the main task
             //GetStocksTask(cancellationTokenSource);
 
+            // Test 1: Using async await to get stock
             //await GetStocks();
         }
         catch (Exception ex)
@@ -129,11 +139,12 @@ public partial class MainWindow : Window
         }
         finally
         {
-            //AfterLoadingStockData();
-            //cancellationTokenSource?.Dispose();
-            //cancellationTokenSource = null;
+            // Test 3: using HttpClient
+            AfterLoadingStockData();
+            cancellationTokenSource?.Dispose();
+            cancellationTokenSource = null;
 
-            //Search.Content = "Search";
+            Search.Content = "Search";
         }
     }
 
