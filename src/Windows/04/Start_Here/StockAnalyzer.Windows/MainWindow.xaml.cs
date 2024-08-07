@@ -48,7 +48,8 @@ public partial class MainWindow : Window
         {
             cancellationTokenSource = new();
 
-            cancellationTokenSource.Token.Register(() => {
+            cancellationTokenSource.Token.Register(() =>
+            {
                 Notes.Text = "Cancellation requested";
             });
 
@@ -56,14 +57,37 @@ public partial class MainWindow : Window
 
             BeforeLoadingStockData();
 
+            var identifiers = StockIdentifier.Text.Split(',', ' ');
+
             var service = new StockService();
 
-            var data = await service.GetStockPricesFor(
-                StockIdentifier.Text,
-                cancellationTokenSource.Token
-            );
+            var loadingTasks = new List<Task<IEnumerable<StockPrice>>>();
 
-            Stocks.ItemsSource = data;
+            foreach (var ident in identifiers)
+            {
+                var loadTask = service.GetStockPricesFor(ident, cancellationTokenSource.Token);
+
+                loadingTasks.Add(loadTask);
+            }
+
+            // Test 1: get result no need to set time out
+            //var allStocksLoadingTasks = await Task.WhenAll(loadingTasks);
+            //Stocks.ItemsSource = allStocksLoadingTasks.SelectMany(x => x);
+
+
+            // Test 2: get result with set time out
+            var allStocksLoadingTasks = Task.WhenAll(loadingTasks);
+            var timeout = Task.Delay(5000);
+            
+            var completedTask = await Task.WhenAny(allStocksLoadingTasks, timeout);
+
+            if(completedTask == timeout)
+            {
+                cancellationTokenSource?.Cancel();
+                throw new OperationCanceledException("Time out!");
+            }
+
+            Stocks.ItemsSource = allStocksLoadingTasks.Result.SelectMany(x => x);
         }
         catch (Exception ex)
         {
@@ -79,19 +103,8 @@ public partial class MainWindow : Window
         }
     }
 
-
-
-
-
-
-
-
-
-
-
-
     private static Task<List<string>> SearchForStocks(
-        CancellationToken cancellationToken    
+        CancellationToken cancellationToken
     )
     {
         return Task.Run(async () =>
@@ -102,7 +115,7 @@ public partial class MainWindow : Window
 
             while (await stream.ReadLineAsync() is string line)
             {
-                if(cancellationToken.IsCancellationRequested)
+                if (cancellationToken.IsCancellationRequested)
                 {
                     break;
                 }
@@ -129,25 +142,14 @@ public partial class MainWindow : Window
         }
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     private void BeforeLoadingStockData()
     {
         stopwatch.Restart();
         StockProgress.Visibility = Visibility.Visible;
         StockProgress.IsIndeterminate = true;
+        Notes.Text = string.Empty;
+        StocksStatus.Text = string.Empty;
+        Stocks.ItemsSource = null;
     }
 
     private void AfterLoadingStockData()
