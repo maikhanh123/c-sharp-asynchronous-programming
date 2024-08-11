@@ -3,6 +3,7 @@ using StockAnalyzer.Core;
 using StockAnalyzer.Core.Domain;
 using StockAnalyzer.Core.Services;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -63,9 +64,28 @@ public partial class MainWindow : Window
 
             var loadingTasks = new List<Task<IEnumerable<StockPrice>>>();
 
+            var stocks = new ConcurrentBag<StockPrice>();
+
             foreach (var ident in identifiers)
             {
                 var loadTask = service.GetStockPricesFor(ident, cancellationTokenSource.Token);
+
+                loadTask = loadTask.ContinueWith(t =>
+                {
+                    var aFewStocks = t.Result.Take(5);
+
+                    foreach (var stock in aFewStocks)
+                    {
+                        stocks.Add(stock);
+                    }
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        Stocks.ItemsSource = stocks.ToArray();
+                    });
+
+                    return aFewStocks;
+                });
 
                 loadingTasks.Add(loadTask);
             }
@@ -77,7 +97,7 @@ public partial class MainWindow : Window
 
             // Test 2: get result with set time out
             var allStocksLoadingTasks = Task.WhenAll(loadingTasks);
-            var timeout = Task.Delay(5000);
+            var timeout = Task.Delay(120000);
             
             var completedTask = await Task.WhenAny(allStocksLoadingTasks, timeout);
 
@@ -87,7 +107,8 @@ public partial class MainWindow : Window
                 throw new OperationCanceledException("Time out!");
             }
 
-            Stocks.ItemsSource = allStocksLoadingTasks.Result.SelectMany(x => x);
+            // Comment out this UI data for get data from ConcurrentBag
+            //Stocks.ItemsSource = allStocksLoadingTasks.Result.SelectMany(x => x);
         }
         catch (Exception ex)
         {
