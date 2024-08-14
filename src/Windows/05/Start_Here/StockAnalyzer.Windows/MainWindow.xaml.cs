@@ -31,6 +31,13 @@ public partial class MainWindow : Window
 
     CancellationTokenSource? cancellationTokenSource;
 
+    // Testing control StateMachine for async await
+    //private async void Search_Click(object sender, RoutedEventArgs e)
+    //{
+    //    var result = await new StateMachineDemo().Run();
+    //    Notes.Text = result;
+    //}
+
     private async void Search_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -77,7 +84,7 @@ public partial class MainWindow : Window
                 }
             }
 
-            
+
 
         }
         catch (Exception ex)
