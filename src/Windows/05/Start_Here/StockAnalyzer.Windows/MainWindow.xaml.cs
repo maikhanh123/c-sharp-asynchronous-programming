@@ -35,6 +35,27 @@ public partial class MainWindow : Window
     {
         try
         {
+            if (cancellationTokenSource is not null)
+            {
+                // Already have an instance of the cancellation token source?
+                // This means the button has already been pressed!
+
+                cancellationTokenSource.Cancel();
+                cancellationTokenSource.Dispose();
+                cancellationTokenSource = null;
+
+                Search.Content = "Search";
+                return;
+            }
+
+            cancellationTokenSource = new CancellationTokenSource();
+            cancellationTokenSource.Token.Register(() =>
+            {
+                Notes.Text = "Cancellation requested";
+            });
+
+            Search.Content = "Cancel"; // Button text
+
             BeforeLoadingStockData();
 
             var identifiers = StockIdentifier.Text.Split(' ', ',');
@@ -45,22 +66,31 @@ public partial class MainWindow : Window
 
             //var service = new MockStockStreamService();
             var service = new StockDiskStreamService();
-            var enumerator = service.GetAllStockPrices();
+            var enumerator = service.GetAllStockPrices(cancellationTokenSource.Token);
 
-            await foreach (var item in enumerator.WithCancellation(CancellationToken.None))
+            await foreach (var item in enumerator)
             {
                 if (identifiers.Contains(item.Identifier))
                 {
+                    await Task.Delay(500, cancellationTokenSource.Token);
                     data.Add(item);
                 }
             }
 
-            AfterLoadingStockData();
+            
 
         }
         catch (Exception ex)
         {
             Notes.Text = ex.Message;
+        }
+        finally
+        {
+            AfterLoadingStockData();
+            cancellationTokenSource?.Dispose();
+            cancellationTokenSource = null;
+
+            Search.Content = "Search";
         }
     }
 
@@ -121,6 +151,9 @@ public partial class MainWindow : Window
         stopwatch.Restart();
         StockProgress.Visibility = Visibility.Visible;
         StockProgress.IsIndeterminate = true;
+        Notes.Text = string.Empty;
+        StocksStatus.Text = string.Empty;
+        Stocks.ItemsSource = null;
     }
 
     private void AfterLoadingStockData()
