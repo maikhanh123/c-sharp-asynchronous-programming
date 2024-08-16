@@ -1,4 +1,5 @@
-﻿@model System.Collections.Generic.IEnumerable<StockAnalyzer.Core.Domain.StockPrice>
+﻿@* @model System.Collections.Generic.IEnumerable<StockAnalyzer.Core.Domain.StockPrice> *@
+@model System.Collections.Generic.IEnumerable<StockAnalyzer.Core.Domain.StockCalculation>
 
 <h2>Stock prices for @ViewBag.Title</h2>
 
@@ -21,7 +22,7 @@
                     @stockPrice.Identifier
                 </td>
                 <td>
-                    @stockPrice.Volume
+                    @stockPrice.TotalSeconds
                 </td>
             </tr>
         }

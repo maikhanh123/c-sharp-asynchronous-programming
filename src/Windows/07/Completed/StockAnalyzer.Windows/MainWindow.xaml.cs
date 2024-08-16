@@ -39,12 +39,14 @@ public partial class MainWindow : Window
 
         var stocks = new Dictionary<string, IEnumerable<StockPrice>>
             {
-                { "MSFT", Generate("MSFT") },
+                { "MSFT1", Generate("MSFT") },
                 { "GOOGL", Generate("GOOGL") },
                 { "AAPL", Generate("AAPL") },
                 { "CAT", Generate("CAT") },
                 { "ABC", Generate("ABC") },
-                { "DEF", Generate("DEF") }
+                { "DEF", Generate("DEF") },
+                { "DEF1", Generate("DEF1") },
+                { "DEF2", Generate("DEF2") }
             };
 
         var bag = new ConcurrentBag<StockCalculation>();
@@ -60,7 +62,7 @@ public partial class MainWindow : Window
                     });
 
                     var parallelLoopResult = Parallel.ForEach(stocks,
-                        new ParallelOptions { MaxDegreeOfParallelism = 1 },
+                        new ParallelOptions { MaxDegreeOfParallelism = 7 },
                         (element, state) => {
                             if (element.Key == "MSFT" || state.ShouldExitCurrentIteration)
                             {
